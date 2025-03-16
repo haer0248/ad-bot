@@ -1,0 +1,4 @@
+*.log
+*.db
+.env
+node_modules/
