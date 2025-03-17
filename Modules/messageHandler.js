@@ -13,7 +13,9 @@ async function processMessage(message) {
     if (message.author.bot) return;
 
     // 轉發
-    if (message.reference?.channelId) isForwardMessage = true;
+    if (message?.reference) {
+        if (message.reference?.type == 1) isForwardMessage = true;
+    }
 
     if (!message.content && !isForwardMessage) return;
 
@@ -26,6 +28,9 @@ async function processMessage(message) {
     // 非測試頻道與廣告頻道丟回去
     if (message.channel.id !== process.env.AD_CHANNEL_ID && !testChannel) return;
 
+    // 開頭為 !/！ 與測試頻道不進行處理
+    if (((message.content).startsWith('!') || (message.content).startsWith('！')) && testChannel) return;
+
     const nowTime = Math.floor(new Date().getTime() / 1000);
     const muteTime = 3600000; // 1小時
 
@@ -36,9 +41,10 @@ async function processMessage(message) {
     const urlPattern = /(?:https?:\/\/)?(?:\w+\.)?discord(?:(?:app)?\.com\/invite|\.gg)\/(?<code>[a-z\d-]+)?(?:\?\S*)?(?:#\S*)?/g;
     const urls = content.match(urlPattern) || [];
     for (const url of urls) {
-        processedContent = processedContent.replace(url, '');
+        processedContent = processedContent.replace(url, '1');
     }
 
+    processedContent = processedContent.replace(/<a?:[a-zA-Z0-9_-]+:\d+>/g, '11');
     processedContent = processedContent.replace(/\*\*(.+?)\*\*/g, '$1');
     processedContent = processedContent.replace(/(\*|_)(.+?)\1/g, '$2');
     processedContent = processedContent.replace(/```(?:[a-zA-Z]+\n)?(.+?)```/gs, '$1');
@@ -198,7 +204,7 @@ async function processMessage(message) {
     if (send && testChannel) {
         try {
             await message.reply({
-                content: `✅ 第三方廣告內容通過測試，可以進行發送。`
+                content: `✅ 第三方廣告內容通過測試，可以進行發送，字元佔用 ${contentLength}/${maxLength}。`
             })
         } catch (error) {
             Logger.run('ERROR', error);
