@@ -16,7 +16,14 @@ const ads = sequelize.define('ad', {
     postTimestamp: {
         type: Sequelize.DataTypes.STRING
     }
-});
+})
+
+sequelize.sync({ alter: true })
+.then(async () => {
+    console.log('資料庫已同步')
+}).catch((error) => {
+    console.error(error)
+})
 
 module.exports = {
     ads

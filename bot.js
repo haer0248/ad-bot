@@ -23,7 +23,7 @@ const client = new Discord.Client({
 global.client = client;
 global.Logger = Logger;
 
-const allowedGuilds = [];
+const allowedGuilds = [327047979661787146, 600358280232960009];
 
 client.on('ready', () => {
 

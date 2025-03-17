@@ -1,20 +1,33 @@
+const Discord = require('discord.js');
 const { containsInvalidUrl, extractInviteCodes } = require('./urlChecker');
 const { ads } = require('../database');
 
 async function processMessage(message) {
-    // 忽略機器人自己的訊息
+    const maxLength = 100;
+
+    let testChannel = false;
+    let isForwardMessage = false;
+
+    // 忽略機器人訊息
+    if (message.author.id === process.env.CLIENT_ID) return;
     if (message.author.bot) return;
-    if (!message.content) return;
-    if (message.channel.id !== process.env.AD_CHANNEL_ID && message.channel.id !== process.env.AD_TEST_CHANNEL_ID) return;
+
+    // 轉發
+    if (message.reference?.channelId) isForwardMessage = true;
+
+    if (!message.content && !isForwardMessage) return;
+
+    // 私訊
+    if (message.channel.type === Discord.ChannelType.DM) testChannel = true;
 
     // 測試頻道
-    let testChannel = false;
     if (message.channel.id === process.env.AD_TEST_CHANNEL_ID) testChannel = true;
+
+    // 非測試頻道與廣告頻道丟回去
+    if (message.channel.id !== process.env.AD_CHANNEL_ID && !testChannel) return;
 
     const nowTime = Math.floor(new Date().getTime() / 1000);
     const muteTime = 3600000; // 1小時
-
-    // Logger.run('INFO', `${message.author.tag}: ${message.content}`);
 
     const content = message.content;
 
@@ -34,13 +47,18 @@ async function processMessage(message) {
     const contentLength = processedContent.length;
     if (contentLength < 0) return;
 
-    const maxLength = 100;
     const isTooLong = contentLength > maxLength;
     const inviteCodes = extractInviteCodes(content);
 
     // 權限組
-    const botMember = message.guild.members.me;
-    const canModerate = message.member.moderatable && botMember.roles.highest.comparePositionTo(message.member.roles.highest) > 0;
+    let botMember = null;
+    let canModerate;
+    if (testChannel) {
+        canModerate = true;
+    } else {
+        botMember = message.guild.members.me;
+        canModerate = message.member.moderatable && botMember.roles.highest.comparePositionTo(message.member.roles.highest) > 0
+    }
 
     if (!canModerate) return;
 
@@ -125,7 +143,7 @@ async function processMessage(message) {
         } else {
             Logger.run('INFO', `${message.author.tag} 發送廣告內容包含多個第三方社群邀請連結。`)
             try {
-                if (!testChannel) await message.delete();
+                await message.delete();
 
                 // await message.member.timeout(muteTime, '發送長度過長');
                 await message.author.send({
@@ -133,6 +151,38 @@ async function processMessage(message) {
                 }).catch(err => {
                     message.channel.send({
                         content: `${message.author.tag} 廣告內容僅限包含一個社群邀請連結。\n無法發送私訊：請至社群隱私設定 → 私人訊息設定為啟用。`
+                    });
+                    console.error('無法發送私訊:', err);
+                });
+            } catch (error) {
+                Logger.run('ERROR', error);
+                console.error(error);
+            }
+        }
+    }
+
+    if (isForwardMessage) {
+        send = false;
+        if (testChannel) {
+            try {
+                await message.reply({
+                    content: `❌ 廣告內容不通過，禁止使用轉發功能。`
+                })
+            } catch (error) {
+                Logger.run('ERROR', error);
+                console.error(error);
+            }
+        } else {
+            Logger.run('INFO', `${message.author.tag} 發送廣告來自轉發。`)
+            try {
+                await message.delete();
+
+                // await message.member.timeout(muteTime, '發送長度過長');
+                await message.author.send({
+                    content: `第三方廣告頻道禁止使用轉發功能來進行規避發佈廣告規則。`
+                }).catch(err => {
+                    message.channel.send({
+                        content: `${message.author.tag} 禁止使用轉發功能來進行規避發佈廣告規則。\n無法發送私訊：請至社群隱私設定 → 私人訊息設定為啟用。`
                     });
                     console.error('無法發送私訊:', err);
                 });
