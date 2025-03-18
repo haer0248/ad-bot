@@ -10,8 +10,12 @@ function containsInvalidUrl(content) {
     
     for (const url of urls) {
         allowedPattern.lastIndex = 0;
-        const isAllowed = allowedPattern.test(url);
-        if (!isAllowed) {
+        const match = allowedPattern.exec(url)
+        if (!match) {
+            return true;
+        }
+
+        if (match[0] !== match.input) {
             return true;
         }
     }
